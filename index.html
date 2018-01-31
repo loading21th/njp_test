@@ -2,15 +2,136 @@
 <html>
 <head>
 <title>Welcome to nginx!</title>
-<style>
-    body {
-        width: 35em;
-        margin: 0 auto;
-        font-family: Tahoma, Verdana, Arial, sans-serif;
+<style type='text/css'>
+    #player {
+        float:left
+        width: 1300
+        height: 1000
+    }
+    #chatroom {
+        margin:0
+        width: 1300
+        height: 1000
+        float:left
     }
 </style>
+    <script src="http://code.jquery.com/jquery-1.11.1.min.js"></script>
+    <script type="text/javascript">//<![CDATA[
+    $(function () {
+        $('#connect_websocket').click(function () {
+            if (window.s) {
+                window.s.close()
+            }
+            /*创建socket连接*/
+            addr = "ws://"+window.location.host+"/lytest/hlsroom/echo/{{schoolname}}/{{classname}}/"
+            /*addr = "ws://"+window.location.host+"/lytest/hlsroom/echo/"*/
+            var socket = new WebSocket(addr);
+            socket.onopen = function () {
+                console.log('WebSocket open');//成功连接上Websocket
+            };
+            socket.onmessage = function (e) {
+                console.log('message: ' + e.data);//打印出服务端返回过来的数据
+                $('#messagecontainer').prepend('<p>' + e.data + '</p>');
+            };
+            // Call onopen directly if socket is already open
+            if (socket.readyState == WebSocket.OPEN) socket.onopen();
+            window.s = socket;
+        });
+        $('#send_message').click(function () {
+            //如果未连接到websocket
+            if (!window.s) {
+                alert("websocket未连接.");
+            } else {
+                window.s.send($('#message').val());//通过websocket发送数据
+            }
+        });
+        $('#close_websocket').click(function () {
+            if (window.s) {
+                window.s.close();//关闭websocket
+                console.log('websocket已关闭');
+            }
+        });
+
+    });
+    //]]></script>
+<script type="text/javascript" src="/jwplayer/jwplayer.js"></script>
+
+    <script type="text/javascript">
+        jwplayer("player").setup({
+        sources: [
+            {
+                file: "rtmp://192.168.13.68:1935/live/xjtu"
+            }
+        ],
+        image: "bg.jpg",
+        autostart: false,
+        width: 1280,
+        height: 960,
+        primary: "flash"
+    });
+    </script>
+    <script>
+        function file_upload(is_index)
+        {
+            var form_data = new FormData();
+            if (is_index == "no")
+            {
+                var file_name = document.getElementById('file_upload').files[0];
+                form_data.append('filename',file_name);
+            }
+            $.ajax({
+                type:'POST',
+                url :'/lytest/hlsroom/{{schoolname}}/{{classname}}/',
+                data:form_data, 
+                contentType:false,
+                processData:false,
+                mimeType:"multipart/form-data",
+                error:function()
+                {
+                    alert('请求失败');
+                },
+                success:function(arg)
+                {
+                    val = JSON.parse(arg).Courseware_name;
+                    $('#upul').empty();
+                    for (var inode=0; inode<val.length; inode++)
+                    {
+                        $('#upul').append('<li id="upli"><a href="/lytest/hlsroom/download/{{schoolname}}/{{classname}}/'+val[inode]+'/" >'+val[inode]+'</a></li>');	
+                    }
+                }
+            });
+        }
+        $(document).ready(function()
+            {
+                file_upload("yes");
+            });
+    </script>
 </head>
 <body>
-<h1>Welcome to homePAGE!</h1>
+    <h1>Welcome {{schoolname}} school,and my class :{{classname}}</h1>
+    <div>
+        <div id="player">Loading the player ...</div>
+        <div id='chatroom'>
+            <br>
+            <h1>Received Messages</h1>
+            <br>
+            <div id="messagecontainer"></div>
+            <input type="text" id="message" value="Hello, World!"/>
+            <button type="button" id="connect_websocket">连接 websocket</button>
+            <button type="button" id="send_message">发送 message</button>
+            <button type="button" id="close_websocket">关闭 websocket</button>
+        </div>
+    </div>
+	<div>
+        <input type ='file' name='coursefile' id='file_upload' />
+    	<input type='submit' id='test'  onclick='file_upload("no")' value='Submit'/>
+	</div>
+    <div class = 'row pre-scrollable'  style='height:500px;width:500px;overflow-x:scroll;overflow-y:scroll'>
+        <ul class = 'filelist' id='upul'>
+            <li id='upli'> <a href='{% url 'add' schoolname classname sum %}' >{{sum}}</a></li> 
+        </ul>
+    </div>
+
+
 </body>
 </html>
